@@ -4,10 +4,15 @@ import { Tag } from '../tags/entities/tag.entity';
 import { JwtUser, tagOwnerWhere } from '../tags/tags.helper';
 import { Note } from './entities/note.entity';
 
+export enum NotesFilterEnum {
+  ALL = 'all',
+  FAVOURITES = 'favourites',
+  ARCHIVED = 'archived',
+}
+
 export type NoteFilters = {
   tagId?: string;
-  archived?: boolean;
-  favourite?: boolean;
+  filter?: NotesFilterEnum;
 };
 
 export const noteOwnerWhere = (userId: string): FindOptionsWhere<Note> => ({
@@ -83,4 +88,3 @@ export const noteDeletedResponse = (message: string) => ({
   status: 'success',
   message,
 });
-

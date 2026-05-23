@@ -14,26 +14,23 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { NotesFilterEnum } from './notes.helper';
 
 @UseGuards(JwtAuthGuard)
 @Controller('notes')
 export class NotesController {
   constructor(private readonly notesService: NotesService) {}
 
-  private parseBoolean(value?: string) {
-    if (value === undefined) {
-      return undefined;
+  private parseFilter(value?: string) {
+    if (value === NotesFilterEnum.FAVOURITES) {
+      return NotesFilterEnum.FAVOURITES;
     }
 
-    if (value === 'true' || value === '1') {
-      return true;
+    if (value === NotesFilterEnum.ARCHIVED) {
+      return NotesFilterEnum.ARCHIVED;
     }
 
-    if (value === 'false' || value === '0') {
-      return false;
-    }
-
-    return undefined;
+    return NotesFilterEnum.ALL;
   }
 
   @Post()
@@ -45,13 +42,11 @@ export class NotesController {
   findAll(
     @CurrentUser() user: { id: string; email: string },
     @Query('tagId') tagId?: string,
-    @Query('archived') archived?: string,
-    @Query('favourite') favourite?: string,
+    @Query('filter') filter?: string,
   ) {
     return this.notesService.findAll(user, {
       tagId,
-      archived: this.parseBoolean(archived),
-      favourite: this.parseBoolean(favourite),
+      filter: this.parseFilter(filter),
     });
   }
 

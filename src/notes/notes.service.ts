@@ -11,6 +11,7 @@ import {
   noteCreatedResponse,
   noteDeletedResponse,
   noteFetchedResponse,
+  NotesFilterEnum,
   NoteFilters,
   resolveOwnedTags,
 } from './notes.helper';
@@ -60,15 +61,21 @@ export class NotesService {
       queryBuilder.andWhere('tag.id = :tagId', { tagId: filters.tagId });
     }
 
-    if (typeof filters.archived === 'boolean') {
+    if (filters.filter === NotesFilterEnum.ALL) {
       queryBuilder.andWhere('note.isArchived = :isArchived', {
-        isArchived: filters.archived,
+        isArchived: false,
       });
     }
 
-    if (typeof filters.favourite === 'boolean') {
+    if (filters.filter === NotesFilterEnum.FAVOURITES) {
       queryBuilder.andWhere('note.isFavourite = :isFavourite', {
-        isFavourite: filters.favourite,
+        isFavourite: true,
+      });
+    }
+
+    if (filters.filter === NotesFilterEnum.ARCHIVED) {
+      queryBuilder.andWhere('note.isArchived = :isArchived', {
+        isArchived: true,
       });
     }
 
