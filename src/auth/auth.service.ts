@@ -17,7 +17,7 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-  ) { }
+  ) {}
 
   async register(dto: RegisterDto) {
     const existingUser = await this.userRepository.findOne({
@@ -40,7 +40,7 @@ export class AuthService {
 
     return {
       statusCode: 201,
-      status: 'success',
+      success: true,
       message: 'User registered successfully',
       data: {
         user: {
@@ -48,7 +48,7 @@ export class AuthService {
           name: savedUser.name,
           email: savedUser.email,
         },
-      }
+      },
     };
   }
 
@@ -74,7 +74,7 @@ export class AuthService {
 
     return {
       statusCode: 200,
-      status: 'success',
+      success: true,
       message: 'Login successful',
       data: {
         user: {
