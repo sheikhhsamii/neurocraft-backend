@@ -5,13 +5,16 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { Note } from './entities/note.entity';
 import { Tag } from '../tags/entities/tag.entity';
-import { JwtUser, tagOwnerWhere } from '../tags/tags.helper';
-
-type NoteFilters = {
-  tagId?: string;
-  archived?: boolean;
-  favourite?: boolean;
-};
+import {
+  buildCreateNotePayload,
+  noteByIdWhere,
+  noteCreatedResponse,
+  noteDeletedResponse,
+  noteFetchedResponse,
+  NoteFilters,
+  resolveOwnedTags,
+} from './notes.helper';
+import type { JwtUser } from '../tags/tags.helper';
 
 @Injectable()
 export class NotesService {
@@ -22,46 +25,27 @@ export class NotesService {
     private readonly tagRepository: Repository<Tag>,
   ) {}
 
-  private async resolveTags(tagIds?: string[], user?: JwtUser) {
-    if (!tagIds || tagIds.length === 0) {
-      return [];
-    }
-
-    const uniqueTagIds = [...new Set(tagIds)];
-    const tags = await this.tagRepository.find({
-      where: uniqueTagIds.map((id) => ({
-        id,
-        ...(user ? tagOwnerWhere(user.id) : {}),
-      })),
-    });
-
-    if (tags.length !== uniqueTagIds.length) {
-      throw new NotFoundException('One or more tags were not found');
-    }
-
-    return tags;
-  }
-
   async create(createNoteDto: CreateNoteDto, user: JwtUser) {
-    const tags = await this.resolveTags(createNoteDto.tagIds, user);
-
-    const note = this.noteRepository.create({
-      title: createNoteDto.title,
-      content: createNoteDto.content ?? null,
+    const tags = await resolveOwnedTags(
+      this.tagRepository,
+      createNoteDto.tagIds,
       user,
-      tags,
-      isFavourite: createNoteDto.isFavourite ?? false,
-      isArchived: createNoteDto.isArchived ?? false,
-    });
+    );
+
+    const note = this.noteRepository.create(
+      buildCreateNotePayload(
+        createNoteDto.title,
+        createNoteDto.content ?? null,
+        tags,
+        user,
+        createNoteDto.isFavourite ?? false,
+        createNoteDto.isArchived ?? false,
+      ),
+    );
 
     const savedNote = await this.noteRepository.save(note);
 
-    return {
-      statusCode: 201,
-      status: 'success',
-      message: 'Note created successfully',
-      data: savedNote,
-    };
+    return noteCreatedResponse(savedNote);
   }
 
   async findAll(user: JwtUser, filters: NoteFilters = {}) {
@@ -90,44 +74,24 @@ export class NotesService {
 
     const notes = await queryBuilder.getMany();
 
-    return {
-      statusCode: 200,
-      status: 'success',
-      message: 'Notes fetched successfully',
-      data: notes,
-    };
+    return noteFetchedResponse('Notes fetched successfully', notes);
   }
 
   async findOne(id: string, user: JwtUser) {
     const note = await this.noteRepository.findOne({
-      where: {
-        id,
-        user: {
-          id: user.id,
-        },
-      },
+      where: noteByIdWhere(id, user.id),
     });
 
     if (!note) {
       throw new NotFoundException('Note not found');
     }
 
-    return {
-      statusCode: 200,
-      status: 'success',
-      message: 'Note fetched successfully',
-      data: note,
-    };
+    return noteFetchedResponse('Note fetched successfully', note);
   }
 
   async update(id: string, updateNoteDto: UpdateNoteDto, user: JwtUser) {
     const note = await this.noteRepository.findOne({
-      where: {
-        id,
-        user: {
-          id: user.id,
-        },
-      },
+      where: noteByIdWhere(id, user.id),
     });
 
     if (!note) {
@@ -136,7 +100,7 @@ export class NotesService {
 
     const tags =
       updateNoteDto.tagIds !== undefined
-        ? await this.resolveTags(updateNoteDto.tagIds, user)
+        ? await resolveOwnedTags(this.tagRepository, updateNoteDto.tagIds, user)
         : note.tags;
 
     note.title = updateNoteDto.title ?? note.title;
@@ -154,22 +118,12 @@ export class NotesService {
 
     const updatedNote = await this.noteRepository.save(note);
 
-    return {
-      statusCode: 200,
-      status: 'success',
-      message: 'Note updated successfully',
-      data: updatedNote,
-    };
+    return noteFetchedResponse('Note updated successfully', updatedNote);
   }
 
   async remove(id: string, user: JwtUser) {
     const note = await this.noteRepository.findOne({
-      where: {
-        id,
-        user: {
-          id: user.id,
-        },
-      },
+      where: noteByIdWhere(id, user.id),
     });
 
     if (!note) {
@@ -178,10 +132,6 @@ export class NotesService {
 
     await this.noteRepository.remove(note);
 
-    return {
-      statusCode: 200,
-      status: 'success',
-      message: 'Note deleted successfully',
-    };
+    return noteDeletedResponse('Note deleted successfully');
   }
 }
