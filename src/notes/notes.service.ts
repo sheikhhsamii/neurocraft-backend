@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { Note } from './entities/note.entity';
@@ -24,6 +24,7 @@ export class NotesService {
     private readonly noteRepository: Repository<Note>,
     @InjectRepository(Tag)
     private readonly tagRepository: Repository<Tag>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(createNoteDto: CreateNoteDto, user: JwtUser) {
@@ -129,15 +130,39 @@ export class NotesService {
   }
 
   async remove(id: string, user: JwtUser) {
-    const note = await this.noteRepository.findOne({
-      where: noteByIdWhere(id, user.id),
+    await this.dataSource.transaction(async (manager) => {
+      const noteRepository = manager.getRepository(Note);
+      const tagRepository = manager.getRepository(Tag);
+
+      const note = await noteRepository.findOne({
+        where: noteByIdWhere(id, user.id),
+      });
+
+      if (!note) {
+        throw new NotFoundException('Note not found');
+      }
+
+      const tagIds = note.tags.map((tag) => tag.id);
+
+      await noteRepository.remove(note);
+
+      if (tagIds.length > 0) {
+        const orphanTagRows = await tagRepository
+          .createQueryBuilder('tag')
+          .select('tag.id', 'id')
+          .leftJoin('tag.notes', 'note')
+          .where('tag.id IN (:...tagIds)', { tagIds })
+          .groupBy('tag.id')
+          .having('COUNT(note.id) = 0')
+          .getRawMany();
+
+        const orphanTagIds = orphanTagRows.map((row) => row.id as string);
+
+        if (orphanTagIds.length > 0) {
+          await tagRepository.delete(orphanTagIds);
+        }
+      }
     });
-
-    if (!note) {
-      throw new NotFoundException('Note not found');
-    }
-
-    await this.noteRepository.remove(note);
 
     return noteDeletedResponse('Note deleted successfully');
   }
