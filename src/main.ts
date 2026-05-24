@@ -8,7 +8,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   app.setGlobalPrefix('api');
 
- // Enable CORS for frontend
+  // Enable CORS for frontend
   const frontendUrl =
     configService.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
   app.enableCors({
