@@ -15,6 +15,16 @@ export type NoteFilters = {
   filter?: NotesFilterEnum;
 };
 
+export type NoteStatus = {
+  isFavourite: boolean;
+  isArchived: boolean;
+};
+
+export type NoteStatusUpdate = {
+  isFavourite?: boolean;
+  isArchived?: boolean;
+};
+
 export const noteOwnerWhere = (userId: string): FindOptionsWhere<Note> => ({
   user: {
     id: userId,
@@ -44,6 +54,34 @@ export const buildCreateNotePayload = (
   isFavourite,
   isArchived,
 });
+
+export const normalizeNoteStatus = (
+  current: NoteStatus,
+  update: NoteStatusUpdate,
+) => {
+  if (update.isArchived === true) {
+    return {
+      isFavourite: false,
+      isArchived: true,
+    };
+  }
+
+  if (update.isFavourite === true) {
+    return {
+      isFavourite: true,
+      isArchived: false,
+    };
+  }
+
+  if (update.isFavourite !== undefined || update.isArchived !== undefined) {
+    return {
+      isFavourite: false,
+      isArchived: false,
+    };
+  }
+
+  return current;
+};
 
 export const resolveOwnedTags = async (
   tagRepository: Repository<Tag>,

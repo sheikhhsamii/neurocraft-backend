@@ -13,6 +13,7 @@ import {
   noteFetchedResponse,
   NotesFilterEnum,
   NoteFilters,
+  normalizeNoteStatus,
   resolveOwnedTags,
 } from './notes.helper';
 import type { JwtUser } from '../tags/tags.helper';
@@ -35,14 +36,21 @@ export class NotesService {
     );
 
     const note = this.noteRepository.create(
-      buildCreateNotePayload(
-        createNoteDto.title,
-        createNoteDto.content ?? null,
-        tags,
-        user,
-        createNoteDto.isFavourite ?? false,
-        createNoteDto.isArchived ?? false,
-      ),
+      {
+        ...buildCreateNotePayload(
+          createNoteDto.title,
+          createNoteDto.content ?? null,
+          tags,
+          user,
+        ),
+        ...normalizeNoteStatus(
+          { isFavourite: false, isArchived: false },
+          {
+            isFavourite: createNoteDto.isFavourite,
+            isArchived: createNoteDto.isArchived,
+          },
+        ),
+      },
     );
 
     const savedNote = await this.noteRepository.save(note);
@@ -115,14 +123,19 @@ export class NotesService {
     note.content =
       updateNoteDto.content !== undefined ? updateNoteDto.content : note.content;
     note.tags = tags;
-    note.isFavourite =
-      updateNoteDto.isFavourite !== undefined
-        ? updateNoteDto.isFavourite
-        : note.isFavourite;
-    note.isArchived =
-      updateNoteDto.isArchived !== undefined
-        ? updateNoteDto.isArchived
-        : note.isArchived;
+    const nextStatus = normalizeNoteStatus(
+      {
+        isFavourite: note.isFavourite,
+        isArchived: note.isArchived,
+      },
+      {
+        isFavourite: updateNoteDto.isFavourite,
+        isArchived: updateNoteDto.isArchived,
+      },
+    );
+
+    note.isFavourite = nextStatus.isFavourite;
+    note.isArchived = nextStatus.isArchived;
 
     const updatedNote = await this.noteRepository.save(note);
 
