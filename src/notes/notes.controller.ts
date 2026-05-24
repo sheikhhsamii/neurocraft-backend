@@ -43,10 +43,12 @@ export class NotesController {
     @CurrentUser() user: { id: string; email: string },
     @Query('tagId') tagId?: string,
     @Query('filter') filter?: string,
+    @Query('search') search?: string,
   ) {
     return this.notesService.findAll(user, {
       tagId,
       filter: this.parseFilter(filter),
+      search,
     });
   }
 

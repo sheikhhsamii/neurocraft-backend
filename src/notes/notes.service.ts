@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository } from 'typeorm';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { Note } from './entities/note.entity';
@@ -68,6 +68,26 @@ export class NotesService {
 
     if (filters.tagId) {
       queryBuilder.andWhere('tag.id = :tagId', { tagId: filters.tagId });
+    }
+
+    const searchTerm = filters.search?.trim();
+
+    if (searchTerm) {
+      const searchPattern = `%${searchTerm}%`;
+
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where('note.title ILIKE :search', {
+            search: searchPattern,
+          })
+            .orWhere('note.content ILIKE :search', {
+              search: searchPattern,
+            })
+            .orWhere('tag.name ILIKE :search', {
+              search: searchPattern,
+            });
+        }),
+      );
     }
 
     if (filters.filter === NotesFilterEnum.ALL) {

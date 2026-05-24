@@ -13,6 +13,7 @@ export enum NotesFilterEnum {
 export type NoteFilters = {
   tagId?: string;
   filter?: NotesFilterEnum;
+  search?: string;
 };
 
 export type NoteStatus = {
