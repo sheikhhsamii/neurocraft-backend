@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { TagsService } from './tags.service';
@@ -29,8 +30,8 @@ export class TagsController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: JwtUser) {
-    return this.tagsService.findAll(user);
+  findAll(@CurrentUser() user: JwtUser, @Query('scope') scope?: string) {
+    return this.tagsService.findAll(user, scope);
   }
 
   @Get(':id')

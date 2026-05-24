@@ -13,7 +13,6 @@ import {
   ownedTagWhere,
   tagCreatePayload,
   tagNameWhere,
-  tagOwnerWhere,
 } from './tags.helper';
 
 @Injectable()
@@ -46,13 +45,36 @@ export class TagsService {
     };
   }
 
-  async findAll(user: JwtUser) {
-    const tags = await this.tagRepository.find({
-      where: tagOwnerWhere(user.id),
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+  async findAll(user: JwtUser, scope?: string) {
+    if (scope !== 'active-notes') {
+      const tags = await this.tagRepository.find({
+        where: {
+          user: {
+            id: user.id,
+          },
+        },
+        order: {
+          createdAt: 'DESC',
+        },
+      });
+
+      return {
+        statusCode: 200,
+        status: 'success',
+        message: 'Tags fetched successfully',
+        data: tags,
+      };
+    }
+
+    const tags = await this.tagRepository
+      .createQueryBuilder('tag')
+      .innerJoin('tag.notes', 'note')
+      .where('tag.userId = :userId', { userId: user.id })
+      .andWhere('note.userId = :userId', { userId: user.id })
+      .andWhere('note.isArchived = :isArchived', { isArchived: false })
+      .orderBy('tag.createdAt', 'DESC')
+      .distinct(true)
+      .getMany();
 
     return {
       statusCode: 200,
